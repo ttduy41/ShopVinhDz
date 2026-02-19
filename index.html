@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VinhMod - Hệ Thống Quản Trị Tối Thượng</title>
+    <style>
+        :root { --bg: #f0f2f5; --text: #1c1e21; --card: #ffffff; --accent: #00a884; --admin: #dc3545; --pending: #ffc107; --border: #ddd; }
+        [data-theme="dark"] { --bg: #121212; --text: #e4e6eb; --card: #242526; --border: #3e4042; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; transition: 0.3s; overflow-x: hidden; }
+
+        /* HEADER */
+        header { position: fixed; top: 0; width: 100%; height: 70px; background: var(--card); display: flex; align-items: center; padding: 0 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; box-sizing: border-box; }
+        .balance-box { background: #1a1a1a; color: #00ff88; padding: 6px 16px; border-radius: 30px; font-weight: bold; border: 1px solid #00ff88; font-family: monospace; }
+
+        /* SIDE MENU (ADMIN & USER) */
+        #sideMenu { position: fixed; top: 0; left: -350px; width: 340px; height: 100%; background: var(--card); box-shadow: 10px 0 30px rgba(0,0,0,0.3); transition: 0.4s; z-index: 2000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .admin-section { display: none; margin-top: 20px; padding: 15px; background: #000; border-radius: 15px; color: #fff; border: 1px solid #444; }
+        .server-title { color: var(--pending); font-size: 13px; font-weight: bold; margin: 15px 0 5px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .log-box { font-family: 'Courier New', monospace; font-size: 11px; color: #00ff00; max-height: 180px; overflow-y: auto; margin-bottom: 10px; line-height: 1.4; text-align: left; }
+
+        /* SHOP GRID */
+        .shop-container { margin-top: 100px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin-inline: auto; }
+        .product-card { background: var(--card); border-radius: 20px; padding: 25px; border: 1px solid var(--border); text-align: center; transition: 0.3s; }
+
+        /* MODAL */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 5000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--card); padding: 30px; border-radius: 25px; width: 90%; max-width: 400px; text-align: center; border: 2px solid var(--accent); }
+
+        /* INPUTS */
+        input, select, button { width: 100%; padding: 13px; margin: 8px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; outline: none; }
+        .btn-main { background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1500; }
+    </style>
+</head>
+<body>
+
+    <div id="keyModal" class="modal">
+        <div class="modal-content">
+            <h2 style="color:var(--accent)">MUA THÀNH CÔNG! ✅</h2>
+            <p>Key của bạn đã được xuất kho:</p>
+            <div id="keyBox" style="background:#f4f7f6; padding:15px; border-radius:10px; font-weight:bold; color:#111; margin:15px 0; border:2px dashed var(--accent); font-size:18px;"></div>
+            <button class="btn-main" onclick="copyAndClose()">COPY KEY & ĐÓNG</button>
+        </div>
+    </div>
+
+    <div id="authScreen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center;">
+        <div style="background:var(--card); padding:40px; border-radius:24px; width:320px; border:1px solid var(--border); text-align:center;">
+            <h1 style="color:var(--accent); margin-bottom:10px;">VINHMOD</h1>
+            <input type="text" id="uIn" placeholder="Tên tài khoản">
+            <input type="password" id="pIn" placeholder="Mật khẩu">
+            <button class="btn-main" onclick="handleLogin()">VÀO CỬA HÀNG</button>
+            <p style="font-size:11px; color:#888;">Admin mặc định: vinhmoddz / vinhmoddz</p>
+        </div>
+    </div>
+
+    <div id="mainApp" style="display:none">
+        <header>
+            <div onclick="openM()" style="font-size:26px; cursor:pointer;">☰</div>
+            <div style="margin-left:15px; font-weight:800; color:var(--accent)">VINHMOD SHOP</div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+                <span id="userName" style="font-weight:bold">User</span>
+                <div class="balance-box"><span id="userMoney">0</span>đ</div>
+            </div>
+        </header>
+
+        <div id="sideMenu">
+            <div id="adminArea" class="admin-section">
+                <div class="server-title">👥 MÁY CHỦ: NGƯỜI DÙNG</div>
+                <div class="log-box" id="userLogs"></div>
+                <div class="server-title">📑 MÁY CHỦ: GIAO DỊCH</div>
+                <div class="log-box" id="tradeLogs"></div>
+                <div class="server-title">🤖 DUYỆT THẺ & ROBOT</div>
+                <div id="pendingArea"></div>
+                <input type="text" id="cmdAI" placeholder="Lệnh AI...">
+                <button onclick="runAI()" style="background:var(--pending); color:#000;">THỰC THI</button>
+            </div>
+            
+            <h3 style="margin-top:20px;">💳 NẠP THẺ</h3>
+            <select id="tCard"><option>Viettel</option><option>Garena</option><option>Zing</option></select>
+            <select id="vCard"><option value="20000">20.000đ</option><option value="50000">50.000đ</option><option value="100000">100.000đ</option></select>
+            <input id="sCard" placeholder="Số Seri">
+            <input id="mCard" placeholder="Mã PIN">
+            <button class="btn-main" onclick="sendCard()">GỬI THẺ</button>
+            <button onclick="location.reload()" style="background:#eee; color:#333; margin-top:20px;">ĐĂNG XUẤT</button>
+        </div>
+
+        <div id="overlay" onclick="closeM()"></div>
+        <div class="shop-container" id="shopGrid"></div>
+    </div>
+
+    <script>
+        // CƠ SỞ DỮ LIỆU
+        let db = JSON.parse(localStorage.getItem('v11_db')) || {
+            users: { "vinhmoddz": { pass: "vinhmoddz", balance: 1000, isAdmin: true } },
+            products: [
+                { id: 0, key: "itachi", name: "Itachi Ping V3", prices: { "1d": 10000, "vv": 500000 }, keys: [] },
+                { id: 1, key: "hopper", name: "Hopper Plus", prices: { "1d": 15000, "vv": 700000 }, keys: [] }
+            ],
+            pendingCards: [],
+            tradeHistory: []
+        };
+        let currentUser = null;
+
+        function sync() {
+            localStorage.setItem('v11_db', JSON.stringify(db));
+            if(currentUser) {
+                renderShop();
+                if(db.users[currentUser].isAdmin) renderAdmin();
+            }
+        }
+
+        // LOGIN
+        function handleLogin() {
+            let u = document.getElementById('uIn').value.trim();
+            let p = document.getElementById('pIn').value.trim();
+            if(!u || !p) return alert("Nhập đủ thông tin!");
+            if(!db.users[u]) db.users[u] = { pass: p, balance: 0, isAdmin: false };
+            if(db.users[u].pass === p) {
+                currentUser = u;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('userName').innerText = u;
+                document.getElementById('adminArea').style.display = db.users[u].isAdmin ? 'block' : 'none';
+                sync();
+            } else alert("Sai mật khẩu!");
+        }
+
+        // SHOP & MUA HÀNG
+        function renderShop() {
+            document.getElementById('userMoney').innerText = db.users[currentUser].balance.toLocaleString();
+            let grid = document.getElementById('shopGrid'); grid.innerHTML = "";
+            db.products.forEach(p => {
+                grid.innerHTML += `<div class="product-card">
+                    <h3>${p.name}</h3>
+                    <p>Sẵn có: <b style="color:var(--accent)">${p.keys.length}</b></p>
+                    <select id="sel-${p.id}"><option value="1d">1 Ngày</option><option value="vv">Vĩnh viễn</option></select>
+                    <button class="btn-main" onclick="buy(${p.id})">MUA NGAY</button>
+                </div>`;
+            });
+        }
+
+        function buy(id) {
+            let p = db.products[id];
+            let type = document.getElementById(`sel-${id}`).value;
+            let cost = p.prices[type];
+            if(db.users[currentUser].balance < cost) return alert("Hết tiền nạp thêm đi sếp!");
+            if(p.keys.length === 0) return alert("Hết hàng!");
+
+            let key = p.keys.shift(); // Xóa key khỏi kho
+            db.users[currentUser].balance -= cost;
+            db.tradeHistory.unshift({ time: new Date().toLocaleTimeString(), user: currentUser, item: p.name, key: key });
+            sync();
+            document.getElementById('keyBox').innerText = key;
+            document.getElementById('keyModal').style.display = 'flex';
+        }
+
+        // ADMIN PANEL
+        function renderAdmin() {
+            document.getElementById('userLogs').innerHTML = Object.keys(db.users).map(u => 
+                `👤 ${u} | P: ${db.users[u].pass} | ${db.users[u].balance}đ<br>`).join('');
+            
+            document.getElementById('tradeLogs').innerHTML = db.tradeHistory.map(h => 
+                `[${h.time}] ${h.user} mua ${h.item}<br>> ${h.key}<br>`).join('');
+
+            document.getElementById('pendingArea').innerHTML = db.pendingCards.map(c => 
+                `<div style="background:#222; padding:5px; margin-bottom:5px; font-size:10px;">
+                    ${c.user} - ${c.val}đ | S: ${c.seri} | P: ${c.pin} <br>
+                    <button onclick="appr(${c.id})" style="width:45%; background:green; color:white;">Duyệt</button>
+                    <button onclick="reje(${c.id})" style="width:45%; background:red; color:white;">Hủy</button>
+                </div>`).join('');
+        }
+
+        function runAI() {
+            let cmd = document.getElementById('cmdAI').value.toLowerCase();
+            if(cmd.startsWith("them key")) {
+                let parts = cmd.split(" "); let pKey = parts[2];
+                let keys = cmd.split(pKey + " ")[1].split(",").map(k => k.trim());
+                let p = db.products.find(x => x.key === pKey);
+                if(p) { p.keys.push(...keys); sync(); alert("Đã nạp!"); document.getElementById('cmdAI').value = ""; }
+            }
+        }
+
+        // NẠP THẺ
+        function sendCard() {
+            let s = document.getElementById('sCard').value.trim();
+            let m = document.getElementById('mCard').value.trim();
+            if(!s || !m) return alert("Nhập đủ Seri/PIN!");
+            db.pendingCards.push({ id: Date.now(), user: currentUser, seri: s, pin: m, val: parseInt(document.getElementById('vCard').value) });
+            sync(); alert("Đã gửi thẻ!");
+        }
+
+        function appr(id) { let c = db.pendingCards.find(x => x.id === id); if(c) { db.users[c.user].balance += c.val; db.pendingCards = db.pendingCards.filter(x => x.id !== id); sync(); } }
+        function reje(id) { db.pendingCards = db.pendingCards.filter(x => x.id !== id); sync(); }
+        function copyAndClose() { navigator.clipboard.writeText(document.getElementById('keyBox').innerText); document.getElementById('keyModal').style.display = 'none'; alert("Đã copy!"); }
+        function openM() { document.getElementById('sideMenu').style.left = '0'; document.getElementById('overlay').style.display = 'block'; }
+        function closeM() { document.getElementById('sideMenu').style.left = '-350px'; document.getElementById('overlay').style.display = 'none'; }
+    </script>
+</body>
+</html>
